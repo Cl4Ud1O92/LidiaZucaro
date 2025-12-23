@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="utf-8">
+    <title>Lidia Z. - Admin</title>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/style.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top">
+        <div class="container">
+            <a class="navbar-brand"><i class="bi bi-scissors"></i> Lidia Z. Admin</a>
+            <div class="navbar-nav ms-auto">
+                <span class="navbar-text me-3" id="welcomeAdmin"></span>
+                <a class="nav-link" href="#" onclick="logout()">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <!-- Sidebar -->
+            <nav class="col-md-2 d-none d-md-block bg-light sidebar">
+                <div class="position-sticky pt-3">
+                    <ul class="nav flex-column">
+                        <li class="nav-item"><a class="nav-link active" href="#clienti">Clienti</a></li>
+                        <li class="nav-item"><a class="nav-link" href="#appuntamenti">Appuntamenti</a></li>
+                    </ul>
+                </div>
+            </nav>
+
+            <!-- Contenuto principale -->
+            <main class="col-md-10 ms-sm-auto px-md-4">
+                <h1 class="mt-3">🔐 Area Amministratore</h1>
+
+                <!-- CLIENTI -->
+                <section id="clienti" class="mt-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h3>👥 Gestione Clienti</h3>
+                        <button class="btn btn-success" onclick="addClientPrompt()">
+                            <i class="bi bi-person-plus"></i> Nuova Cliente
+                        </button>
+                    </div>
+                    <div id="clientList" class="table-responsive">
+                        <table class="table table-striped align-middle">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Username</th>
+                                    <th>Ruolo</th>
+                                    <th>Creato il</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <hr class="my-4">
+
+                <!-- APPUNTAMENTI -->
+                <section id="appuntamenti">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h3>📅 Richieste Appuntamento</h3>
+                        <small class="text-muted">Conferma per aggiungere in Google Calendar.</small>
+                    </div>
+                    <div id="appointmentsWrapper" class="table-responsive">
+                        <table class="table table-bordered align-middle" id="appointmentsTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Cliente</th>
+                                    <th>Servizio</th>
+                                    <th>Data</th>
+                                    <th>Ora</th>
+                                    <th>Note</th>
+                                    <th>Stato</th>
+                                    <th>Azioni</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                    <div id="appointmentsMessage" class="mt-2"></div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('token');
+        const role = localStorage.getItem('role');
+        const username = localStorage.getItem('username');
+
+        if (!token || role !== 'admin') {
+            window.location.href = 'login.html';
+        }
+
+        document.getElementById('welcomeAdmin').textContent = `Ciao ${username}!`;
+
+        function logout() {
+            localStorage.clear();
+            window.location.href = 'login.html';
+        }
+
+        // ===== CLIENTI =====
+        async function loadClients() {
+            try {
+                const res = await fetch('http://localhost:3000/api/admin/clients', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const clients = await res.json();
+                const tbody = document.querySelector('#clientList tbody');
+                tbody.innerHTML = clients.map(c => `
+                    <tr>
+                        <td>${c.id}</td>
+                        <td>${c.username}</td>
+                        <td>
+                            <span class="badge bg-${c.role === 'admin' ? 'danger' : 'success'}">
+                                ${c.role}
+                            </span>
+                        </td>
+                        <td>${c.created_at}</td>
+                    </tr>
+                `).join('');
+            } catch (e) {
+                console.error('Errore caricamento clienti:', e);
+            }
+        }
+
+        async function addClientPrompt() {
+            const username = prompt('Username nuova cliente:');
+            if (!username) return;
+            const password = prompt('Password per la cliente:');
+            if (!password) return;
+
+            try {
+                const res = await fetch('http://localhost:3000/api/add-client', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await res.json();
+                if (data.id) {
+                    alert('Cliente creata con successo (ID ' + data.id + ').');
+                    loadClients();
+                } else {
+                    alert('Errore: ' + (data.error || 'Impossibile creare la cliente.'));
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Errore di connessione al server.');
+            }
+        }
+
+        // ===== APPUNTAMENTI =====
+        async function loadAppointments() {
+            try {
+                const res = await fetch('http://localhost:3000/api/admin/appointments', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const apps = await res.json();
+                const tbody = document.querySelector('#appointmentsTable tbody');
+
+                if (!Array.isArray(apps) || apps.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">
+                        Nessuna richiesta appuntamento al momento.
+                    </td></tr>`;
+                    return;
+                }
+
+                tbody.innerHTML = apps.map(a => `
+                    <tr>
+                        <td>${a.id}</td>
+                        <td>${a.username}</td>
+                        <td>${a.service}</td>
+                        <td>${a.date}</td>
+                        <td>${a.time}</td>
+                        <td>${a.note || ''}</td>
+                        <td>
+                            <span class="badge ${
+                                a.status === 'pending'   ? 'bg-warning text-dark' :
+                                a.status === 'confirmed' ? 'bg-success' :
+                                'bg-secondary'
+                            }">
+                                ${a.status}
+                            </span>
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-success mb-1" 
+                                onclick="confirmApp(${a.id})"
+                                ${a.status !== 'pending' ? 'disabled' : ''}>
+                                <i class="bi bi-check2-circle"></i> Conferma
+                            </button>
+                            <button class="btn btn-sm btn-danger" 
+                                onclick="rejectApp(${a.id})"
+                                ${a.status !== 'pending' ? 'disabled' : ''}>
+                                <i class="bi bi-x-circle"></i> Rifiuta
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (e) {
+                console.error('Errore caricamento appuntamenti:', e);
+                document.getElementById('appointmentsMessage').innerHTML = `
+                    <div class="alert alert-danger">
+                        Errore nel caricamento degli appuntamenti.
+                    </div>
+                `;
+            }
+        }
+
+        async function confirmApp(id) {
+            if (!confirm('Confermare questo appuntamento e inserirlo in Google Calendar?')) return;
+            try {
+                const res = await fetch(`http://localhost:3000/api/admin/appointments/${id}/confirm`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('appointmentsMessage').innerHTML = `
+                        <div class="alert alert-success mt-2">
+                            Appuntamento confermato e aggiunto in Google Calendar.
+                        </div>
+                    `;
+                    loadAppointments();
+                } else {
+                    alert('Errore: ' + (data.error || 'Impossibile confermare.'));
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Errore di connessione al server.');
+            }
+        }
+
+        async function rejectApp(id) {
+            if (!confirm('Rifiutare questo appuntamento?')) return;
+            try {
+                const res = await fetch(`http://localhost:3000/api/admin/appointments/${id}/reject`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('appointmentsMessage').innerHTML = `
+                        <div class="alert alert-warning mt-2">
+                            Appuntamento rifiutato.
+                        </div>
+                    `;
+                    loadAppointments();
+                } else {
+                    alert('Errore: ' + (data.error || 'Impossibile rifiutare.'));
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Errore di connessione al server.');
+            }
+        }
+
+        // Carica dati all’avvio
+        loadClients();
+        loadAppointments();
+    </script>
+</body>
+</html>

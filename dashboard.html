@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="utf-8">
+    <title>Lidia Z. - La tua Area</title>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/style.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top">
+        <div class="container">
+            <a class="navbar-brand"><i class="bi bi-scissors"></i> Lidia Z. Area Clienti</a>
+            <div class="navbar-nav ms-auto">
+                <span class="navbar-text me-3" id="welcomeUser"></span>
+                <a class="nav-link" href="#" onclick="logout()">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <!-- Sidebar -->
+            <nav class="col-md-2 d-none d-md-block bg-light sidebar">
+                <div class="position-sticky pt-3">
+                    <ul class="nav flex-column">
+                        <li class="nav-item"><a class="nav-link active" href="#home">Home</a></li>
+                        <li class="nav-item"><a class="nav-link" href="#appuntamenti">Appuntamenti</a></li>
+                        <li class="nav-item"><a class="nav-link" href="#prenota">Prenota</a></li>
+                        <li class="nav-item"><a class="nav-link" href="#storico">Storico</a></li>
+                    </ul>
+                </div>
+            </nav>
+
+            <!-- Contenuto -->
+            <main class="col-md-10 ms-sm-auto px-md-4" id="home">
+                <h1 class="mt-3">👋 Benvenuta nella tua area!</h1>
+                
+                <!-- Cards principali -->
+                <div class="row mb-5 mt-4">
+                    <div class="col-md-4 mb-3">
+                        <div class="card text-center bg-warning text-dark">
+                            <div class="card-body">
+                                <i class="bi bi-calendar3 fs-1"></i>
+                                <h3 id="prossimoApp">Nessun appuntamento</h3>
+                                <p>Prossimo appuntamento</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="card text-center bg-success text-white">
+                            <div class="card-body">
+                                <i class="bi bi-plus-circle fs-1"></i>
+                                <h3>Prenota Ora</h3>
+                                <button class="btn btn-light btn-lg" onclick="openBooking()">Nuovo Appuntamento</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="card text-center bg-info text-white">
+                            <div class="card-body">
+                                <i class="bi bi-clock-history fs-1"></i>
+                                <h3 id="totAppuntamenti">0</h3>
+                                <p>Appuntamenti totali</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Form Prenotazione -->
+                <section id="prenota">
+                    <div id="bookingForm" class="card p-4 mb-5" style="display: none;">
+                        <h3>📅 Richiedi Appuntamento</h3>
+                        <p class="text-muted">
+                            Seleziona servizio, data e orario disponibile. La tua richiesta sarà inviata alla titolare che la confermerà.
+                        </p>
+                        <form id="bookingFormEl">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Servizio</label>
+                                    <select class="form-select" id="serviceSelect" required>
+                                        <option value="Taglio Donna (€35)">Taglio Donna (€35)</option>
+                                        <option value="Colore (€50+)">Colore (€50+)</option>
+                                        <option value="Balayage (€80+)">Balayage (€80+)</option>
+                                        <option value="Sposa (€150+)">Sposa (€150+)</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Data</label>
+                                    <input type="date" class="form-control" id="dateInput" required>
+                                </div>
+                                <div class="col-12 mb-3">
+                                    <label class="form-label">Orario</label>
+                                    <div id="slotsContainer" class="d-flex flex-wrap gap-2">
+                                        <small class="text-muted">Seleziona prima una data per vedere gli orari disponibili.</small>
+                                    </div>
+                                    <!-- orario selezionato dallo slot -->
+                                    <input type="hidden" id="timeInput" required>
+                                </div>
+                                <div class="col-12 mb-3">
+                                    <label class="form-label">Note</label>
+                                    <textarea class="form-control" id="noteInput" rows="3" placeholder="Es. colore biondo schiarito..."></textarea>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="bi bi-send"></i> Invia Richiesta
+                            </button>
+                            <button type="button" class="btn btn-secondary btn-lg ms-2" onclick="closeBooking()">
+                                Annulla
+                            </button>
+                        </form>
+                        <div id="bookingMessage" class="mt-3"></div>
+                    </div>
+                </section>
+
+                <!-- Placeholder appuntamenti -->
+                <section id="appuntamenti" class="mb-5">
+                    <h3>Appuntamenti futuri</h3>
+                    <p class="text-muted">In seguito qui leggeremo dal database gli appuntamenti confermati.</p>
+                </section>
+
+                <section id="storico" class="mb-5">
+                    <h3>Storico appuntamenti</h3>
+                    <p class="text-muted">In seguito qui mostreremo lo storico dei tuoi appuntamenti passati.</p>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        // Verifica token e ruolo
+        const token = localStorage.getItem('token');
+        const role = localStorage.getItem('role');
+        const username = localStorage.getItem('username');
+
+        if (!token || role === 'admin') {
+            window.location.href = 'login.html';
+        }
+
+        document.getElementById('welcomeUser').textContent = `Ciao ${username}!`;
+
+        function logout() {
+            localStorage.clear();
+            window.location.href = 'login.html';
+        }
+
+        function openBooking() {
+            document.getElementById('bookingForm').style.display = 'block';
+            document.getElementById('bookingFormEl').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function closeBooking() {
+            document.getElementById('bookingForm').style.display = 'none';
+        }
+
+        // === GESTIONE SLOT ORARI ===
+        const dateInput = document.getElementById('dateInput');
+        const timeHiddenInput = document.getElementById('timeInput');
+        const slotsContainer = document.getElementById('slotsContainer');
+
+        dateInput.addEventListener('change', async () => {
+            const date = dateInput.value;
+            timeHiddenInput.value = '';
+            slotsContainer.innerHTML = '<small class="text-muted">Caricamento slot...</small>';
+
+            if (!date) return;
+
+            try {
+                const res = await fetch(`http://localhost:3000/api/appointments/slots?date=${date}`);
+                const slots = await res.json();
+
+                if (!Array.isArray(slots) || slots.length === 0) {
+                    slotsContainer.innerHTML = '<span class="badge bg-secondary">Nessuno slot disponibile per questo giorno.</span>';
+                    return;
+                }
+
+                slotsContainer.innerHTML = '';
+                slots.forEach(s => {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'btn btn-sm ' + (s.status === 'free' ? 'btn-outline-success' : 'btn-outline-secondary');
+                    btn.textContent = s.time;
+                    btn.disabled = s.status !== 'free';
+
+                    btn.addEventListener('click', () => {
+                        [...slotsContainer.querySelectorAll('button')].forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        timeHiddenInput.value = s.time;
+                    });
+
+                    slotsContainer.appendChild(btn);
+                });
+            } catch (e) {
+                console.error(e);
+                slotsContainer.innerHTML = '<span class="text-danger">Errore nel caricamento degli slot.</span>';
+            }
+        });
+
+        // === INVIO RICHIESTA APPUNTAMENTO ===
+        const bookingFormEl = document.getElementById('bookingFormEl');
+        const bookingMsg = document.getElementById('bookingMessage');
+
+        bookingFormEl.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const service = document.getElementById('serviceSelect').value;
+            const date = document.getElementById('dateInput').value;   // yyyy-mm-dd
+            const time = document.getElementById('timeInput').value;   // hh:mm
+            const note = document.getElementById('noteInput').value;
+            const clientName = username || 'Cliente';
+
+            if (!date || !time) {
+                alert('Seleziona data e orario.');
+                return;
+            }
+
+            try {
+                const res = await fetch('http://localhost:3000/api/appointments/request', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ service, date, time, note, clientName })
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    bookingMsg.innerHTML = `
+                        <div class="alert alert-success mt-3">
+                            <i class="bi bi-check-circle"></i>
+                            Richiesta inviata! La titolare ti confermerà l'appuntamento.
+                        </div>
+                    `;
+                    document.getElementById('prossimoApp').textContent = `${date} ${time} (in attesa)`;
+                    const totEl = document.getElementById('totAppuntamenti');
+                    totEl.textContent = parseInt(totEl.textContent || '0', 10) + 1;
+                    bookingFormEl.reset();
+                    timeHiddenInput.value = '';
+                    slotsContainer.innerHTML = '<small class="text-muted">Seleziona una data per vedere gli orari disponibili.</small>';
+                } else {
+                    bookingMsg.innerHTML = `
+                        <div class="alert alert-danger mt-3">
+                            Errore: ${data.error || 'Impossibile inviare la richiesta.'}
+                        </div>
+                    `;
+                }
+            } catch (err) {
+                console.error(err);
+                bookingMsg.innerHTML = `
+                    <div class="alert alert-danger mt-3">
+                        Errore di connessione al server.
+                    </div>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>
