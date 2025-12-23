@@ -96,7 +96,6 @@
                                     <div id="slotsContainer" class="d-flex flex-wrap gap-2">
                                         <small class="text-muted">Seleziona prima una data per vedere gli orari disponibili.</small>
                                     </div>
-                                    <!-- orario selezionato dallo slot -->
                                     <input type="hidden" id="timeInput" required>
                                 </div>
                                 <div class="col-12 mb-3">
@@ -115,12 +114,13 @@
                     </div>
                 </section>
 
-                <!-- Placeholder appuntamenti -->
+                <!-- Appuntamenti futuri -->
                 <section id="appuntamenti" class="mb-5">
                     <h3>Appuntamenti futuri</h3>
                     <p class="text-muted">In seguito qui leggeremo dal database gli appuntamenti confermati.</p>
                 </section>
 
+                <!-- Storico -->
                 <section id="storico" class="mb-5">
                     <h3>Storico appuntamenti</h3>
                     <p class="text-muted">In seguito qui mostreremo lo storico dei tuoi appuntamenti passati.</p>
@@ -130,10 +130,13 @@
     </div>
 
     <script>
+        const BACKEND_URL = 'http://localhost:3000';
+
         // Verifica token e ruolo
         const token = localStorage.getItem('token');
         const role = localStorage.getItem('role');
         const username = localStorage.getItem('username');
+        const userId = localStorage.getItem('userId');
 
         if (!token || role === 'admin') {
             window.location.href = 'login.html';
@@ -168,7 +171,7 @@
             if (!date) return;
 
             try {
-                const res = await fetch(`https://lidia-backend.onrender.com/api/appointments/slots?date=${date}`);
+                const res = await fetch(`${BACKEND_URL}/api/appointments/slots?date=${encodeURIComponent(date)}`);
                 const slots = await res.json();
 
                 if (!Array.isArray(slots) || slots.length === 0) {
@@ -206,10 +209,9 @@
             e.preventDefault();
 
             const service = document.getElementById('serviceSelect').value;
-            const date = document.getElementById('dateInput').value;   // yyyy-mm-dd
-            const time = document.getElementById('timeInput').value;   // hh:mm
+            const date = document.getElementById('dateInput').value;
+            const time = document.getElementById('timeInput').value;
             const note = document.getElementById('noteInput').value;
-            const clientName = username || 'Cliente';
 
             if (!date || !time) {
                 alert('Seleziona data e orario.');
@@ -217,22 +219,28 @@
             }
 
             try {
-                const res = await fetch('https://lidia-backend.onrender.com/api/appointments/request', {
+                const res = await fetch(`${BACKEND_URL}/api/appointments`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ service, date, time, note, clientName })
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        user_id: Number(userId),
+                        service,
+                        date,
+                        time,
+                        note
+                    })
                 });
 
                 const data = await res.json();
 
-                if (data.success) {
+                if (res.ok && data.success) {
                     bookingMsg.innerHTML = `
                         <div class="alert alert-success mt-3">
-                            <i class="bi bi-check-circle"></i>
                             Richiesta inviata! La titolare ti confermerà l'appuntamento.
                         </div>
                     `;
-                    // aggiorna vista locale
                     document.getElementById('prossimoApp').textContent = `${date} ${time} (in attesa)`;
                     const totEl = document.getElementById('totAppuntamenti');
                     totEl.textContent = parseInt(totEl.textContent || '0', 10) + 1;
@@ -265,13 +273,12 @@
             if (!username) return;
 
             try {
-                const res = await fetch(`https://lidia-backend.onrender.com/api/appointments/my?username=${encodeURIComponent(username)}`);
+                const res = await fetch(`${BACKEND_URL}/api/appointments/my?username=${encodeURIComponent(username)}`);
                 const apps = await res.json();
 
                 if (!Array.isArray(apps)) return;
 
                 const now = new Date();
-
                 const future = [];
                 const past = [];
 
@@ -284,11 +291,9 @@
                     }
                 });
 
-                // Ordina futuri e passati
                 future.sort((a, b) => a.dt - b.dt);
                 past.sort((a, b) => b.dt - a.dt);
 
-                // Card "Prossimo appuntamento"
                 const prossimoEl = document.getElementById('prossimoApp');
                 if (future.length > 0) {
                     const next = future[0];
@@ -296,16 +301,13 @@
                         next.status === 'confirmed' ? 'confermato' :
                         next.status === 'pending'   ? 'in attesa'  :
                                                       'rifiutato';
-
                     prossimoEl.textContent = `${next.date} ${next.time} (${statoLabel})`;
                 } else {
                     prossimoEl.textContent = 'Nessun appuntamento';
                 }
 
-                // Card "Appuntamenti totali"
                 document.getElementById('totAppuntamenti').textContent = apps.length.toString();
 
-                // Sezione "Appuntamenti futuri"
                 const futuriSection = document.querySelector('#appuntamenti');
                 futuriSection.innerHTML = `
                     <h3>Appuntamenti futuri</h3>
@@ -332,7 +334,6 @@
                     }
                 `;
 
-                // Sezione "Storico appuntamenti"
                 const storicoSection = document.querySelector('#storico');
                 storicoSection.innerHTML = `
                     <h3>Storico appuntamenti</h3>

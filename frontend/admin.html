@@ -91,6 +91,8 @@
     </div>
 
     <script>
+        const BACKEND_URL = 'http://localhost:3000';
+
         const token = localStorage.getItem('token');
         const role = localStorage.getItem('role');
         const username = localStorage.getItem('username');
@@ -109,11 +111,19 @@
         // ===== CLIENTI =====
         async function loadClients() {
             try {
-                const res = await fetch('https://lidia-backend.onrender.com/api/admin/clients', {
+                const res = await fetch(`${BACKEND_URL}/api/users`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 const clients = await res.json();
                 const tbody = document.querySelector('#clientList tbody');
+
+                if (!Array.isArray(clients) || clients.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">
+                        Nessun cliente presente.
+                    </td></tr>`;
+                    return;
+                }
+
                 tbody.innerHTML = clients.map(c => `
                     <tr>
                         <td>${c.id}</td>
@@ -123,7 +133,7 @@
                                 ${c.role}
                             </span>
                         </td>
-                        <td>${c.created_at}</td>
+                        <td>${c.created_at || ''}</td>
                     </tr>
                 `).join('');
             } catch (e) {
@@ -132,19 +142,22 @@
         }
 
         async function addClientPrompt() {
-            const username = prompt('Username nuova cliente:');
-            if (!username) return;
+            const newUsername = prompt('Username nuova cliente:');
+            if (!newUsername) return;
             const password = prompt('Password per la cliente:');
             if (!password) return;
 
             try {
-                const res = await fetch('https://lidia-backend.onrender.com/api/add-client', {
+                const res = await fetch(`${BACKEND_URL}/api/users`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ username: newUsername, password })
                 });
                 const data = await res.json();
-                if (data.id) {
+                if (res.ok && data.id) {
                     alert('Cliente creata con successo (ID ' + data.id + ').');
                     loadClients();
                 } else {
@@ -159,7 +172,7 @@
         // ===== APPUNTAMENTI =====
         async function loadAppointments() {
             try {
-                const res = await fetch('https://lidia-backend.onrender.com/api/admin/appointments', {
+                const res = await fetch(`${BACKEND_URL}/api/appointments`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 const apps = await res.json();
@@ -175,7 +188,7 @@
                 tbody.innerHTML = apps.map(a => `
                     <tr>
                         <td>${a.id}</td>
-                        <td>${a.username}</td>
+                        <td>${a.username || ''}</td>
                         <td>${a.service}</td>
                         <td>${a.date}</td>
                         <td>${a.time}</td>
@@ -184,7 +197,7 @@
                             <span class="badge ${
                                 a.status === 'pending'   ? 'bg-warning text-dark' :
                                 a.status === 'confirmed' ? 'bg-success' :
-                                'bg-secondary'
+                                                            'bg-secondary'
                             }">
                                 ${a.status}
                             </span>
@@ -216,15 +229,15 @@
         async function confirmApp(id) {
             if (!confirm('Confermare questo appuntamento e inserirlo in Google Calendar?')) return;
             try {
-                const res = await fetch(`https://lidia-backend.onrender.com/api/admin/appointments/${id}/confirm`, {
+                const res = await fetch(`${BACKEND_URL}/api/appointments/${id}/confirm`, {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 const data = await res.json();
-                if (data.success) {
+                if (res.ok && data.success) {
                     document.getElementById('appointmentsMessage').innerHTML = `
                         <div class="alert alert-success mt-2">
-                            Appuntamento confermato e aggiunto in Google Calendar.
+                            Appuntamento confermato (evento Calendar creato o tentato).
                         </div>
                     `;
                     loadAppointments();
@@ -240,12 +253,12 @@
         async function rejectApp(id) {
             if (!confirm('Rifiutare questo appuntamento?')) return;
             try {
-                const res = await fetch(`https://lidia-backend.onrender.com/api/admin/appointments/${id}/reject`, {
+                const res = await fetch(`${BACKEND_URL}/api/appointments/${id}/reject`, {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 const data = await res.json();
-                if (data.success) {
+                if (res.ok && data.success) {
                     document.getElementById('appointmentsMessage').innerHTML = `
                         <div class="alert alert-warning mt-2">
                             Appuntamento rifiutato.
