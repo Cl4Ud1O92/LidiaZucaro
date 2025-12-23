@@ -232,12 +232,16 @@
                             Richiesta inviata! La titolare ti confermerà l'appuntamento.
                         </div>
                     `;
+                    // aggiorna vista locale
                     document.getElementById('prossimoApp').textContent = `${date} ${time} (in attesa)`;
                     const totEl = document.getElementById('totAppuntamenti');
                     totEl.textContent = parseInt(totEl.textContent || '0', 10) + 1;
                     bookingFormEl.reset();
                     timeHiddenInput.value = '';
                     slotsContainer.innerHTML = '<small class="text-muted">Seleziona una data per vedere gli orari disponibili.</small>';
+
+                    // ricarica elenco dal backend
+                    loadMyAppointments();
                 } else {
                     bookingMsg.innerHTML = `
                         <div class="alert alert-danger mt-3">
@@ -254,6 +258,113 @@
                 `;
             }
         });
+
+        // === CARICAMENTO APPUNTAMENTI CLIENTE ===
+        async function loadMyAppointments() {
+            const username = localStorage.getItem('username');
+            if (!username) return;
+
+            try {
+                const res = await fetch(`https://lidia-backend.onrender.com/api/appointments/my?username=${encodeURIComponent(username)}`);
+                const apps = await res.json();
+
+                if (!Array.isArray(apps)) return;
+
+                const now = new Date();
+
+                const future = [];
+                const past = [];
+
+                apps.forEach(a => {
+                    const dt = new Date(`${a.date}T${a.time}:00`);
+                    if (dt >= now) {
+                        future.push({ ...a, dt });
+                    } else {
+                        past.push({ ...a, dt });
+                    }
+                });
+
+                // Ordina futuri e passati
+                future.sort((a, b) => a.dt - b.dt);
+                past.sort((a, b) => b.dt - a.dt);
+
+                // Card "Prossimo appuntamento"
+                const prossimoEl = document.getElementById('prossimoApp');
+                if (future.length > 0) {
+                    const next = future[0];
+                    const statoLabel =
+                        next.status === 'confirmed' ? 'confermato' :
+                        next.status === 'pending'   ? 'in attesa'  :
+                                                      'rifiutato';
+
+                    prossimoEl.textContent = `${next.date} ${next.time} (${statoLabel})`;
+                } else {
+                    prossimoEl.textContent = 'Nessun appuntamento';
+                }
+
+                // Card "Appuntamenti totali"
+                document.getElementById('totAppuntamenti').textContent = apps.length.toString();
+
+                // Sezione "Appuntamenti futuri"
+                const futuriSection = document.querySelector('#appuntamenti');
+                futuriSection.innerHTML = `
+                    <h3>Appuntamenti futuri</h3>
+                    ${
+                        future.length === 0
+                        ? '<p class="text-muted">Nessun appuntamento futuro.</p>'
+                        : '<ul class="list-group mb-3">' +
+                            future.map(a => `
+                                <li class="list-group-item d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <div><strong>${a.date} ${a.time}</strong> - ${a.service}</div>
+                                        <small class="text-muted">${a.note || ''}</small>
+                                    </div>
+                                    <span class="badge ${
+                                        a.status === 'confirmed' ? 'bg-success' :
+                                        a.status === 'pending'   ? 'bg-warning text-dark' :
+                                                                   'bg-secondary'
+                                    }">
+                                        ${a.status}
+                                    </span>
+                                </li>
+                            `).join('') +
+                          '</ul>'
+                    }
+                `;
+
+                // Sezione "Storico appuntamenti"
+                const storicoSection = document.querySelector('#storico');
+                storicoSection.innerHTML = `
+                    <h3>Storico appuntamenti</h3>
+                    ${
+                        past.length === 0
+                        ? '<p class="text-muted">Nessun appuntamento passato.</p>'
+                        : '<ul class="list-group mb-3">' +
+                            past.map(a => `
+                                <li class="list-group-item d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <div><strong>${a.date} ${a.time}</strong> - ${a.service}</div>
+                                        <small class="text-muted">${a.note || ''}</small>
+                                    </div>
+                                    <span class="badge ${
+                                        a.status === 'confirmed' ? 'bg-success' :
+                                        a.status === 'pending'   ? 'bg-warning text-dark' :
+                                                                   'bg-secondary'
+                                    }">
+                                        ${a.status}
+                                    </span>
+                                </li>
+                            `).join('') +
+                          '</ul>'
+                    }
+                `;
+            } catch (e) {
+                console.error('Errore loadMyAppointments:', e);
+            }
+        }
+
+        // carica appuntamenti all'avvio
+        loadMyAppointments();
     </script>
 </body>
 </html>
