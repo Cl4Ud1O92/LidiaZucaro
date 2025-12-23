@@ -4,7 +4,9 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
 const { db } = require('../../config/database');
-const { JWT_SECRET } = require('../../middleware/auth');
+
+// JWT_SECRET direttamente qui (stesso valore del middleware)
+const JWT_SECRET = 'lidia-super-secret-key-2025-change-in-prod';
 
 const router = express.Router();
 
