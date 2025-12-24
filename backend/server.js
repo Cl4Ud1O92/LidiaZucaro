@@ -13,6 +13,11 @@ app.use(express.json());
 
 initDB();
 
+const pushModule = require('./modules/push/push');
+
+app.use('/api/push', pushModule.router);
+
+
 // Health
 app.get('/api/health', (req, res) => {
   res.json({ ok: true, message: 'Lidia backend v2 up & running' });

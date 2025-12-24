@@ -11,6 +11,7 @@
     "googleapis": "^169.0.0",
     "jsonwebtoken": "^9.0.2",
     "sqlite3": "^5.1.6",
-    "twilio": "^5.11.1"
+    "twilio": "^5.11.1",
+    "web-push": "^3.6.7"
   }
 }
